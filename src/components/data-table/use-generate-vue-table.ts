@@ -1,7 +1,8 @@
-import type { ColumnFiltersState, SortingState, TableOptionsWithReactiveData, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnFiltersState, PaginationState, SortingState, TableOptionsWithReactiveData, VisibilityState } from '@tanstack/vue-table'
 
 import { getCoreRowModel, getFacetedRowModel, getFacetedUniqueValues, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useVueTable } from '@tanstack/vue-table'
 
+import { DEFAULT_PAGE_SIZE } from '@/constants/pagination'
 import { valueUpdater } from '@/lib/utils'
 
 import type { DataTableProps } from './types'
@@ -11,6 +12,10 @@ export function generateVueTable<T>(props: DataTableProps<T>) {
   const columnFilters = ref<ColumnFiltersState>([])
   const columnVisibility = ref<VisibilityState>({})
   const rowSelection = ref({})
+  const pagination = ref<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  })
 
   const useServerPagination = !!props.serverPagination
 
@@ -25,7 +30,7 @@ export function generateVueTable<T>(props: DataTableProps<T>) {
     if (useServerPagination && props.serverPagination) {
       return props.serverPagination.pageSize
     }
-    return 10
+    return DEFAULT_PAGE_SIZE
   })
 
   const pageCount = computed(() => {
@@ -43,12 +48,22 @@ export function generateVueTable<T>(props: DataTableProps<T>) {
       get columnFilters() { return columnFilters.value },
       get columnVisibility() { return columnVisibility.value },
       get rowSelection() { return rowSelection.value },
+      get pagination() {
+        if (useServerPagination) {
+          return {
+            pageIndex: pageIndex.value,
+            pageSize: pageSize.value,
+          }
+        }
+        return pagination.value
+      },
     },
     enableRowSelection: true,
     onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
     onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
     onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
     onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
+    onPaginationChange: updaterOrValue => valueUpdater(updaterOrValue, pagination),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -58,10 +73,6 @@ export function generateVueTable<T>(props: DataTableProps<T>) {
   }
 
   if (useServerPagination) {
-    tableConfig.state!.pagination = {
-      get pageIndex() { return pageIndex.value },
-      get pageSize() { return pageSize.value },
-    }
     tableConfig.pageCount = pageCount.value
     tableConfig.manualPagination = true
   }
